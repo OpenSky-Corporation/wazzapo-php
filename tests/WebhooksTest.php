@@ -6,6 +6,7 @@ namespace Wazzapo\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Wazzapo\Exception\WazzapoException;
+use Wazzapo\Exception\WebhookVerificationException;
 use Wazzapo\Webhooks;
 
 final class WebhooksTest extends TestCase
@@ -37,7 +38,7 @@ final class WebhooksTest extends TestCase
 
     public function testWrongSecret(): void
     {
-        $this->expectException(WazzapoException::class);
+        $this->expectException(WebhookVerificationException::class);
         Webhooks::verify(self::BODY, Webhooks::sign(self::BODY, 'other', 1_760_000_000), self::SECRET, 300, 1_760_000_000);
     }
 
@@ -57,6 +58,54 @@ final class WebhooksTest extends TestCase
     {
         $this->expectException(WazzapoException::class);
         Webhooks::verify(self::BODY, [], self::SECRET);
+    }
+
+    /** @return iterable<string, array{mixed}> */
+    public static function emptySecrets(): iterable
+    {
+        yield 'пустая строка' => [''];
+        yield 'пробелы' => ['  '];
+        yield 'getenv без переменной' => [false];
+        yield 'null' => [null];
+    }
+
+    /** Тело, подписанное пустым ключом, не должно пройти, когда секрет не задан (README: getenv). */
+    #[\PHPUnit\Framework\Attributes\DataProvider('emptySecrets')]
+    public function testEmptySecretIsRejected(mixed $secret): void
+    {
+        $forged = ['X-Wazzapo-Timestamp' => (string) time(), 'X-Wazzapo-Signature-V2' => 'v2=' . hash_hmac('sha256', time() . '.' . self::BODY, '')];
+        $this->expectException(WebhookVerificationException::class);
+        $this->expectExceptionMessage('Секрет вебхука пуст');
+        Webhooks::verify(self::BODY, $forged, $secret);
+    }
+
+    public function testSignWithEmptySecretFails(): void
+    {
+        $this->expectException(WebhookVerificationException::class);
+        Webhooks::sign(self::BODY, '');
+    }
+
+    public function testOneOfSeveralSignatures(): void
+    {
+        $good = Webhooks::sign(self::BODY, self::SECRET, 1_760_000_000);
+        $old = Webhooks::sign(self::BODY, 'old_secret', 1_760_000_000)['X-Wazzapo-Signature-V2'];
+        $good['X-Wazzapo-Signature-V2'] = $old . ', ' . $good['X-Wazzapo-Signature-V2'];
+        self::assertSame('message.incoming', Webhooks::verify(self::BODY, $good, self::SECRET, 300, 1_760_000_000)['event']);
+        $this->expectException(WebhookVerificationException::class);
+        Webhooks::verify(self::BODY, $good, 'third', 300, 1_760_000_000);
+    }
+
+    public function testNotJsonWithValidSignature(): void
+    {
+        $this->expectException(WebhookVerificationException::class);
+        Webhooks::verify('not json', Webhooks::sign('not json', self::SECRET, 1_760_000_000), self::SECRET, 300, 1_760_000_000);
+    }
+
+    public function testDeliveryId(): void
+    {
+        self::assertSame('d-42', Webhooks::deliveryId(['x-wazzapo-delivery-id' => 'd-42']));
+        self::assertNull(Webhooks::deliveryId([]));
+        self::assertSame('X-Wazzapo-Delivery-Id', Webhooks::DELIVERY_ID_HEADER);
     }
 
     public function testEventsFromSpec(): void

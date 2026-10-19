@@ -30,25 +30,25 @@ final class Team
      * - limit (int): Сотрудников на странице, от 1 до 200
      * - cursor (string|null): next_cursor из прошлого ответа; без него первая страница
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(array $params = [], array $options = []): array
+    public function list(array $params = []): array
     {
-        return $this->http->request('GET', '/team', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/team', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы team.list подряд: обходит next_cursor сам.
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{id: string, is_active: bool, name?: string|null, phone_number_ids?: list<string>|null, role: 'owner'|'ADMIN'|'AGENT'|'VIEWER'}>
      */
-    public function listAll(array $params = [], array $options = []): \Generator
+    public function listAll(array $params = []): \Generator
     {
-        return $this->http->paginate('/team', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/team', $query, $options);
     }
 }

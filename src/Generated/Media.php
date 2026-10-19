@@ -21,8 +21,10 @@ final class Media
      * Скачивает файл по media_id: тело ответа сам файл, тип в заголовке Content-Type.
      *
      * Так забирают фото, голосовые и документы, которые прислал клиент. Сохраните файл у себя:
-     * Meta хранит его ограниченное время. Ошибки: 400 BAD_REQUEST (номер не через Cloud API),
-     * 502 provider_error (файл удалён в Meta или сбой).
+     * Meta хранит его ограниченное время. Ошибки: 404 phone_number_not_found или NOT_FOUND (номер не
+     * найден; файла с таким id нет в Meta: удалён, срок хранения вышел или id неверный; id sandbox_…
+     * от тестового ключа, такие файлы не хранятся), 400 BAD_REQUEST (номер не через Cloud API),
+     * 502 provider_error (сбой Meta, повторите позже).
      *
      * Параметры запроса:
      * - phone_number_id (string, обязательно): id номера: phone_number_id из GET /api/v2/external/phone-numbers,
@@ -30,13 +32,14 @@ final class Media
      *
      * @param string $mediaId id файла: media.id из входящего сообщения (вебхук message.incoming) или из POST /media
      * @param string $phoneNumberId id номера: phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return string
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function download(string $mediaId, string $phoneNumberId, array $options = []): string
+    public function download(string $mediaId, string $phoneNumberId, array $params = []): string
     {
-        return $this->http->request('GET', '/media/' . rawurlencode($mediaId), ['phone_number_id' => $phoneNumberId], null, $options, 'binary');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/media/' . rawurlencode($mediaId), ['phone_number_id' => $phoneNumberId] + $query, null, $options, 'binary');
     }
 
     /**
@@ -60,12 +63,13 @@ final class Media
      *
      * @param string $phoneNumberId id номера: phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
      * @param string|\CURLFile $file путь к файлу или CURLFile
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{media_id: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function upload(string $phoneNumberId, string|\CURLFile $file, array $options = []): array
+    public function upload(string $phoneNumberId, string|\CURLFile $file, array $params = []): array
     {
-        return $this->http->request('POST', '/media', ['phone_number_id' => $phoneNumberId], ['file' => $file], $options, 'multipart');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/media', ['phone_number_id' => $phoneNumberId] + $query, ['file' => $file], $options, 'multipart');
     }
 }

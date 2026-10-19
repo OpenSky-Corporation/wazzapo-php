@@ -43,13 +43,14 @@ final class Templates
      *   /api/v2/external/phone-numbers, например 123456789012345
      *
      * @param array{category: 'MARKETING'|'UTILITY'|'AUTHENTICATION', components: list<array<string, mixed>>, language: string, name: string, phone_number_id: string} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{buttons?: list<array<string, mixed>>|null, category: 'MARKETING'|'UTILITY'|'AUTHENTICATION', components?: list<array<string, mixed>>|null, created_at?: string|null, header_format?: 'TEXT'|'IMAGE'|'VIDEO'|'DOCUMENT'|'LOCATION'|null, language: string, name: string, quality_score?: 'HIGH'|'MEDIUM'|'LOW'|'UNKNOWN'|null, rejected_reason?: string|null, status: 'PENDING'|'APPROVED'|'REJECTED'|'DISABLED'|'PAUSED', template_id: string, updated_at?: string|null, variables_count?: int|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function create(array $body, array $options = []): array
+    public function create(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/templates', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/templates', $query, $body, $options, 'json');
     }
 
     /**
@@ -61,13 +62,14 @@ final class Templates
      * Meta не удаляет. Ошибки: 404 шаблон не найден. Тестовый ключ ничего не удаляет.
      *
      * @param string $templateId id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return null
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function delete(string $templateId, array $options = []): ?array
+    public function delete(string $templateId, array $params = []): ?array
     {
-        return $this->http->request('DELETE', '/templates/' . rawurlencode($templateId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('DELETE', '/templates/' . rawurlencode($templateId), $query, null, $options, 'json');
     }
 
     /**
@@ -82,13 +84,14 @@ final class Templates
      * POST /messages/send отвечает 422 template_not_found (не подошло значение в теле запроса).
      *
      * @param string $templateId id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{buttons?: list<array<string, mixed>>|null, category: 'MARKETING'|'UTILITY'|'AUTHENTICATION', components?: list<array<string, mixed>>|null, created_at?: string|null, header_format?: 'TEXT'|'IMAGE'|'VIDEO'|'DOCUMENT'|'LOCATION'|null, language: string, name: string, quality_score?: 'HIGH'|'MEDIUM'|'LOW'|'UNKNOWN'|null, rejected_reason?: string|null, status: 'PENDING'|'APPROVED'|'REJECTED'|'DISABLED'|'PAUSED', template_id: string, updated_at?: string|null, variables_count?: int|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function get(string $templateId, array $options = []): array
+    public function get(string $templateId, array $params = []): array
     {
-        return $this->http->request('GET', '/templates/' . rawurlencode($templateId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/templates/' . rawurlencode($templateId), $query, null, $options, 'json');
     }
 
     /**
@@ -104,13 +107,14 @@ final class Templates
      * шаблона POST /messages/send отвечает 422 template_not_found).
      *
      * @param string $templateId id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{buttons?: list<array<string, mixed>>|null, category: 'MARKETING'|'UTILITY'|'AUTHENTICATION', components?: list<array<string, mixed>>|null, created_at?: string|null, header_format?: 'TEXT'|'IMAGE'|'VIDEO'|'DOCUMENT'|'LOCATION'|null, language: string, name: string, quality_score?: 'HIGH'|'MEDIUM'|'LOW'|'UNKNOWN'|null, rejected_reason?: string|null, status: 'PENDING'|'APPROVED'|'REJECTED'|'DISABLED'|'PAUSED', template_id: string, updated_at?: string|null, variables_count?: int|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function getStatus(string $templateId, array $options = []): array
+    public function getStatus(string $templateId, array $params = []): array
     {
-        return $this->http->request('GET', '/templates/' . rawurlencode($templateId) . '/status', [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/templates/' . rawurlencode($templateId) . '/status', $query, null, $options, 'json');
     }
 
     /**
@@ -120,7 +124,8 @@ final class Templates
      *
      * Нужен, чтобы выбрать шаблон для messages.send: передайте его name и language, а значений переменных
      * столько, сколько variables_count. Фильтры status, category, name, language можно сочетать.
-     * Страницы курсором: next_cursor передайте в cursor. Ошибки: 404 номер не найден, 403 account_restricted.
+     * Страницы курсором: next_cursor передайте в cursor. У каналов без шаблонов Meta (почта, OLX, Telegram)
+     * список пустой. Ошибки: 404 номер не найден, 403 account_restricted.
      *
      * Параметры запроса:
      * - phone_number_id (string, обязательно): id номера из GET /api/v2/external/phone-numbers, например
@@ -133,27 +138,27 @@ final class Templates
      * - language (string|null): Только этого языка, например ru или kk
      *
      * @param string $phoneNumberId id номера из GET /api/v2/external/phone-numbers, например 123456789012345
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, status?: string|null, category?: string|null, name?: string|null, language?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, meta?: array<string, mixed>, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(string $phoneNumberId, array $params = [], array $options = []): array
+    public function list(string $phoneNumberId, array $params = []): array
     {
-        return $this->http->request('GET', '/templates', ['phone_number_id' => $phoneNumberId] + $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/templates', ['phone_number_id' => $phoneNumberId] + $query, null, $options, 'json');
     }
 
     /**
      * Все страницы templates.list подряд: обходит next_cursor сам.
      *
      * @param string $phoneNumberId id номера из GET /api/v2/external/phone-numbers, например 123456789012345
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, status?: string|null, category?: string|null, name?: string|null, language?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{buttons?: list<array<string, mixed>>|null, category: 'MARKETING'|'UTILITY'|'AUTHENTICATION', components?: list<array<string, mixed>>|null, created_at?: string|null, header_format?: 'TEXT'|'IMAGE'|'VIDEO'|'DOCUMENT'|'LOCATION'|null, language: string, name: string, quality_score?: 'HIGH'|'MEDIUM'|'LOW'|'UNKNOWN'|null, rejected_reason?: string|null, status: 'PENDING'|'APPROVED'|'REJECTED'|'DISABLED'|'PAUSED', template_id: string, updated_at?: string|null, variables_count?: int|null}>
      */
-    public function listAll(string $phoneNumberId, array $params = [], array $options = []): \Generator
+    public function listAll(string $phoneNumberId, array $params = []): \Generator
     {
-        return $this->http->paginate('/templates', ['phone_number_id' => $phoneNumberId] + $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/templates', ['phone_number_id' => $phoneNumberId] + $query, $options);
     }
 
     /**
@@ -179,12 +184,13 @@ final class Templates
      *
      * @param string $templateId id шаблона в Meta: template_id из POST или GET /api/v2/external/templates, например 1252715608684590
      * @param array{category?: 'MARKETING'|'UTILITY'|'AUTHENTICATION'|null, components?: list<array<string, mixed>>|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{buttons?: list<array<string, mixed>>|null, category: 'MARKETING'|'UTILITY'|'AUTHENTICATION', components?: list<array<string, mixed>>|null, created_at?: string|null, header_format?: 'TEXT'|'IMAGE'|'VIDEO'|'DOCUMENT'|'LOCATION'|null, language: string, name: string, quality_score?: 'HIGH'|'MEDIUM'|'LOW'|'UNKNOWN'|null, rejected_reason?: string|null, status: 'PENDING'|'APPROVED'|'REJECTED'|'DISABLED'|'PAUSED', template_id: string, updated_at?: string|null, variables_count?: int|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function update(string $templateId, array $body, array $options = []): array
+    public function update(string $templateId, array $body, array $params = []): array
     {
-        return $this->http->request('PATCH', '/templates/' . rawurlencode($templateId), [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('PATCH', '/templates/' . rawurlencode($templateId), $query, $body, $options, 'json');
     }
 }

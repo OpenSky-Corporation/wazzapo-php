@@ -22,13 +22,20 @@ final class HttpClient
     private const RETRY_STATUSES = [429, 500, 502, 503, 504];
     private const MAX_RETRY_AFTER = 60;
 
+    /**
+     * Ключи клиентов хранятся вне свойств объекта: var_dump, print_r, var_export и serialize их не покажут.
+     *
+     * @var \WeakMap<self, string>|null
+     */
+    private static ?\WeakMap $keys = null;
+
     /** @var callable(float): void */
     private $sleep;
     /** @var callable(): float случайное число от 0 до 1 */
     private $random;
 
     public function __construct(
-        private readonly string $apiKey,
+        string $apiKey,
         private readonly string $baseUrl,
         private readonly float $timeout,
         private readonly int $maxRetries,
@@ -36,6 +43,8 @@ final class HttpClient
         ?callable $sleep = null,
         ?callable $random = null,
     ) {
+        self::$keys ??= new \WeakMap();
+        self::$keys[$this] = $apiKey;
         $this->sleep = $sleep ?? static function (float $seconds): void {
             usleep((int) ($seconds * 1_000_000));
         };
@@ -51,7 +60,39 @@ final class HttpClient
     /** Ключ для логов: первые 8 знаков и многоточие. */
     public function maskedKey(): string
     {
-        return substr($this->apiKey, 0, 8) . '…';
+        return substr($this->apiKey(), 0, 8) . '…';
+    }
+
+    /** Тестовый ключ wz_test_. */
+    public function isTest(): bool
+    {
+        return str_starts_with($this->apiKey(), 'wz_test_');
+    }
+
+    /** @return array<string, mixed> serialize не сохранит ключ */
+    public function __serialize(): array
+    {
+        throw new \LogicException('Клиент Wazzapo нельзя сериализовать: создайте новый с ключом');
+    }
+
+    private function apiKey(): string
+    {
+        return self::$keys[$this] ?? '';
+    }
+
+    /** Ключи настроек вызова в последнем массиве метода; остальное уходит параметрами запроса. */
+    public const OPTION_KEYS = ['idempotency_key', 'timeout', 'headers'];
+
+    /**
+     * Делит последний массив метода на параметры запроса и настройки вызова.
+     *
+     * @param array<string, mixed> $params
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
+     */
+    public static function splitOptions(array $params): array
+    {
+        $options = array_intersect_key($params, array_flip(self::OPTION_KEYS));
+        return [array_diff_key($params, $options), $options];
     }
 
     /**
@@ -65,7 +106,7 @@ final class HttpClient
     public function request(string $method, string $path, array $query, ?array $body, array $options, string $kind): array|string|null
     {
         $headers = [
-            'X-API-Key' => $this->apiKey,
+            'X-API-Key' => $this->apiKey(),
             'User-Agent' => 'wazzapo-sdk-php/' . self::VERSION . ' php/' . PHP_VERSION,
             'Accept' => $kind === 'binary' ? '*/*' : 'application/json',
         ];
@@ -105,6 +146,7 @@ final class HttpClient
      */
     public function paginate(string $path, array $query, array $options): \Generator
     {
+        $seen = [];
         while (true) {
             $page = $this->request('GET', $path, $query, null, $options, 'json') ?? [];
             foreach ($page['data'] ?? [] as $item) {
@@ -114,6 +156,11 @@ final class HttpClient
             if (empty($page['has_more']) || !is_string($cursor) || $cursor === '') {
                 return;
             }
+            if (isset($seen[$cursor])) {
+                // Сервер вернул тот же курсор: без остановки обход не закончится
+                throw new WazzapoException('Сервер повторил next_cursor ' . $cursor . ': обход списка остановлен', null, 'PAGINATION_LOOP');
+            }
+            $seen[$cursor] = true;
             $query['cursor'] = $cursor;
         }
     }
@@ -141,11 +188,28 @@ final class HttpClient
         }
     }
 
-    /** Задержка перед повтором: Retry-After сервера или 0.5 × 2^n с (до 8 с) ± 25 %. */
+    /**
+     * Retry-After в секундах: число или дата HTTP (Sun, 19 Oct 2026 08:00:00 GMT). null, если не разобрать.
+     */
+    public static function parseRetryAfter(?string $value, ?int $now = null): ?float
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+        $value = trim($value);
+        if (is_numeric($value)) {
+            return max((float) $value, 0.0);
+        }
+        $at = strtotime($value);
+        return $at === false ? null : (float) max($at - ($now ?? time()), 0);
+    }
+
+    /** Задержка перед повтором: Retry-After сервера (не больше 60 с) или 0.5 × 2^n с (до 8 с) ± 25 %. */
     private function delay(int $attempt, ?string $retryAfter): float
     {
-        if ($retryAfter !== null && is_numeric($retryAfter)) {
-            return (float) min(max((int) $retryAfter, 0), self::MAX_RETRY_AFTER);
+        $seconds = self::parseRetryAfter($retryAfter);
+        if ($seconds !== null) {
+            return min($seconds, (float) self::MAX_RETRY_AFTER);
         }
         $base = min(0.5 * (2 ** $attempt), 8.0);
         return $base * (0.75 + 0.5 * ($this->random)());
@@ -164,13 +228,17 @@ final class HttpClient
         return rtrim($this->baseUrl, '/') . self::PREFIX . $path . $qs;
     }
 
+    /** Путь к файлу → CURLFile; путь к несуществующему файлу даёт ошибку до запроса. */
     private static function file(mixed $value): mixed
     {
-        if (is_string($value) && is_file($value)) {
-            $type = function_exists('mime_content_type') ? (mime_content_type($value) ?: 'application/octet-stream') : 'application/octet-stream';
-            return new \CURLFile($value, $type, basename($value));
+        if (!is_string($value)) {
+            return $value;
         }
-        return $value;
+        if (!is_file($value) || !is_readable($value)) {
+            throw new WazzapoException('Файл не найден или не читается: ' . $value, null, 'FILE_NOT_FOUND');
+        }
+        $type = function_exists('mime_content_type') ? (mime_content_type($value) ?: 'application/octet-stream') : 'application/octet-stream';
+        return new \CURLFile($value, $type, basename($value));
     }
 
     private static function uuid4(): string

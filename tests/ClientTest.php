@@ -43,6 +43,16 @@ final class ClientTest extends TestCase
         self::assertSame(self::SEND, json_decode($r->body, true));
     }
 
+    public function testOptionsAndFiltersShareLastArray(): void
+    {
+        // Настройки вызова не уходят в адрес: новый фильтр в API не ломает такой вызов
+        $t = new FakeTransport([FakeTransport::json(200, ['data' => []])]);
+        $this->client($t)->phoneNumbers->list(['channel' => 'whatsapp', 'timeout' => 5, 'headers' => ['X-Request-Id' => 'r1']]);
+        $r = $t->requests[0];
+        self::assertSame('https://wazzapo.kz/api/v2/external/phone-numbers?channel=whatsapp', $r->url);
+        self::assertSame('r1', $r->headers['X-Request-Id']);
+    }
+
     public function testRetriesKeepSameIdempotencyKey(): void
     {
         $t = new FakeTransport([
@@ -198,6 +208,68 @@ final class ClientTest extends TestCase
     {
         putenv('WAZZAPO_API_KEY');
         $this->expectException(\Wazzapo\Exception\WazzapoException::class);
+        $this->expectExceptionMessage('Нет API-ключа');
         new Wazzapo(['transport' => new FakeTransport([])]);
+    }
+
+    public function testFalseKeyFromGetenvGivesClearError(): void
+    {
+        putenv('WAZZAPO_API_KEY');
+        try {
+            new Wazzapo(['api_key' => getenv('WAZZAPO_API_KEY'), 'transport' => new FakeTransport([])]);
+            self::fail('нет ошибки');
+        } catch (\Wazzapo\Exception\WazzapoException $e) {
+            self::assertSame('MISSING_API_KEY', $e->errorCode);
+        }
+    }
+
+    public function testKeyHiddenInVarExportAndSerialize(): void
+    {
+        $client = $this->client(new FakeTransport([]));
+        $dump = var_export($client, true) . var_export($client->http, true);
+        self::assertStringNotContainsString('1234567890abcdef', $dump);
+        $this->expectException(\LogicException::class);
+        serialize($client);
+    }
+
+    public function testUploadMissingFileFailsBeforeRequest(): void
+    {
+        $t = new FakeTransport([]);
+        try {
+            $this->client($t)->media->upload('123', '/нет/такого/файла.pdf');
+            self::fail('нет ошибки');
+        } catch (\Wazzapo\Exception\WazzapoException $e) {
+            self::assertSame('FILE_NOT_FOUND', $e->errorCode);
+        }
+        self::assertCount(0, $t->requests);
+    }
+
+    public function testRetryAfterAsHttpDate(): void
+    {
+        $date = gmdate('D, d M Y H:i:s', time() + 5) . ' GMT';
+        $t = new FakeTransport([
+            FakeTransport::json(429, ['success' => false, 'error' => ['code' => 'RATE_LIMIT_EXCEEDED', 'message' => 'x']], ['Retry-After' => $date]),
+            FakeTransport::json(200, ['data' => [], 'has_more' => false]),
+        ]);
+        $this->client($t)->contacts->list();
+        self::assertGreaterThanOrEqual(3.0, $this->sleeps[0]);
+        self::assertLessThanOrEqual(6.0, $this->sleeps[0]);
+    }
+
+    public function testRepeatedCursorStopsPagination(): void
+    {
+        $page = ['data' => [['id' => 'c1']], 'has_more' => true, 'next_cursor' => 'same'];
+        $t = new FakeTransport([FakeTransport::json(200, $page), FakeTransport::json(200, $page), FakeTransport::json(200, $page)]);
+        $seen = 0;
+        try {
+            foreach ($this->client($t)->contacts->listAll() as $item) {
+                $seen++;
+            }
+            self::fail('обход не остановился');
+        } catch (\Wazzapo\Exception\WazzapoException $e) {
+            self::assertSame('PAGINATION_LOOP', $e->errorCode);
+        }
+        self::assertSame(2, $seen);
+        self::assertCount(2, $t->requests);
     }
 }

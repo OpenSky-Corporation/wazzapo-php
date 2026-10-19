@@ -32,13 +32,14 @@ final class Messages
      *   /api/v2/external/phone-numbers, например 123456789012345
      *
      * @param array{message_ids: list<string>, phone_number_id: string} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{success: bool}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function markRead(array $body, array $options = []): array
+    public function markRead(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/messages/mark-read', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/messages/mark-read', $query, $body, $options, 'json');
     }
 
     /**
@@ -59,13 +60,14 @@ final class Messages
      *   можно, например 77071234567. Уходит в Meta как есть: без пробелов, 8 в начале на 7 не заменяется
      *
      * @param array{emoji: string, message_id: string, phone_number_id: string, to: string} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{message_id?: string|null, status: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function react(array $body, array $options = []): array
+    public function react(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/messages/reaction', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/messages/reaction', $query, $body, $options, 'json');
     }
 
     /**
@@ -131,12 +133,13 @@ final class Messages
      * - video (array<string, mixed>|null): Для type=video: MP4 или 3GP до 16 МБ
      *
      * @param array{audio?: array<string, mixed>|null, contacts?: list<array<string, mixed>>|null, context?: array<string, mixed>|null, document?: array<string, mixed>|null, image?: array<string, mixed>|null, interactive?: array<string, mixed>|null, location?: array<string, mixed>|null, phone_number_id: string, sticker?: array<string, mixed>|null, template?: array<string, mixed>|null, text?: array<string, mixed>|null, to: string, type: 'text'|'image'|'video'|'audio'|'document'|'template'|'interactive'|'location'|'contacts'|'sticker', video?: array<string, mixed>|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{message_id: string, provider_message_id?: string|null, status?: 'accepted'|'sent'|'delivered'|'read'|'failed'}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function send(array $body, array $options = []): array
+    public function send(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/messages/send', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/messages/send', $query, $body, $options, 'json');
     }
 }

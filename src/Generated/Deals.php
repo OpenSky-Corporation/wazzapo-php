@@ -64,13 +64,14 @@ final class Deals
      * - title (string|null): Название, до 300 знаков. Не передали: номер сделки, например #0128
      *
      * @param array{amount?: int|null, contact?: array<string, mixed>|null, contact_id?: string|null, currency?: string|null, custom_fields?: array<string, mixed>, external_id?: string|null, pipeline_id: string, responsible_user_id?: string|null, stage_id?: string|null, title?: string|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{amount?: int, closed_at?: string|null, contact: array<string, mixed>, conversation_id?: string|null, created_at?: string|null, currency?: string, custom_fields?: array<string, mixed>, external_id?: string|null, id: string, lost_at?: string|null, lost_reason?: string|null, number: int, pipeline_id: string, responsible_user_id?: string|null, source?: string|null, stage_id: string, stage_name?: string, status: 'open'|'won'|'lost', title: string, updated_at?: string|null, won_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function create(array $body, array $options = []): array
+    public function create(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/deals', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/deals', $query, $body, $options, 'json');
     }
 
     /**
@@ -82,13 +83,14 @@ final class Deals
      * Право deals:read.
      *
      * @param string $dealId id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{amount?: int, closed_at?: string|null, contact: array<string, mixed>, conversation_id?: string|null, created_at?: string|null, currency?: string, custom_fields?: array<string, mixed>, external_id?: string|null, id: string, lost_at?: string|null, lost_reason?: string|null, number: int, pipeline_id: string, responsible_user_id?: string|null, source?: string|null, stage_id: string, stage_name?: string, status: 'open'|'won'|'lost', title: string, updated_at?: string|null, won_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function get(string $dealId, array $options = []): array
+    public function get(string $dealId, array $params = []): array
     {
-        return $this->http->request('GET', '/deals/' . rawurlencode($dealId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/deals/' . rawurlencode($dealId), $query, null, $options, 'json');
     }
 
     /**
@@ -112,26 +114,26 @@ final class Deals
      * - limit (int): Сколько сделок на странице, от 1 до 200, по умолчанию 50
      * - cursor (string|null): next_cursor из прошлого ответа; для первой страницы не передавайте
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{pipeline_id?: string|null, stage_id?: string|null, contact_id?: string|null, external_id?: string|null, updated_since?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(array $params = [], array $options = []): array
+    public function list(array $params = []): array
     {
-        return $this->http->request('GET', '/deals', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/deals', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы deals.list подряд: обходит next_cursor сам.
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{pipeline_id?: string|null, stage_id?: string|null, contact_id?: string|null, external_id?: string|null, updated_since?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{amount?: int, closed_at?: string|null, contact: array<string, mixed>, conversation_id?: string|null, created_at?: string|null, currency?: string, custom_fields?: array<string, mixed>, external_id?: string|null, id: string, lost_at?: string|null, lost_reason?: string|null, number: int, pipeline_id: string, responsible_user_id?: string|null, source?: string|null, stage_id: string, stage_name?: string, status: 'open'|'won'|'lost', title: string, updated_at?: string|null, won_at?: string|null}>
      */
-    public function listAll(array $params = [], array $options = []): \Generator
+    public function listAll(array $params = []): \Generator
     {
-        return $this->http->paginate('/deals', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/deals', $query, $options);
     }
 
     /**
@@ -158,13 +160,14 @@ final class Deals
      *
      * @param string $dealId id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
      * @param array{lost_reason?: string|null, pipeline_id?: string|null, stage_id: string} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{amount?: int, closed_at?: string|null, contact: array<string, mixed>, conversation_id?: string|null, created_at?: string|null, currency?: string, custom_fields?: array<string, mixed>, external_id?: string|null, id: string, lost_at?: string|null, lost_reason?: string|null, number: int, pipeline_id: string, responsible_user_id?: string|null, source?: string|null, stage_id: string, stage_name?: string, status: 'open'|'won'|'lost', title: string, updated_at?: string|null, won_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function move(string $dealId, array $body, array $options = []): array
+    public function move(string $dealId, array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/deals/' . rawurlencode($dealId) . '/move', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/deals/' . rawurlencode($dealId) . '/move', $query, $body, $options, 'json');
     }
 
     /**
@@ -200,12 +203,13 @@ final class Deals
      *
      * @param string $dealId id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
      * @param array{amount?: int|null, currency?: string|null, custom_fields?: array<string, mixed>|null, external_id?: string|null, responsible_user_id?: string|null, title?: string|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{amount?: int, closed_at?: string|null, contact: array<string, mixed>, conversation_id?: string|null, created_at?: string|null, currency?: string, custom_fields?: array<string, mixed>, external_id?: string|null, id: string, lost_at?: string|null, lost_reason?: string|null, number: int, pipeline_id: string, responsible_user_id?: string|null, source?: string|null, stage_id: string, stage_name?: string, status: 'open'|'won'|'lost', title: string, updated_at?: string|null, won_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function update(string $dealId, array $body, array $options = []): array
+    public function update(string $dealId, array $body, array $params = []): array
     {
-        return $this->http->request('PATCH', '/deals/' . rawurlencode($dealId), [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('PATCH', '/deals/' . rawurlencode($dealId), $query, $body, $options, 'json');
     }
 }

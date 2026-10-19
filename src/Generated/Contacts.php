@@ -46,13 +46,14 @@ final class Contacts
      *   рассылок. До 100 меток
      *
      * @param array{custom_fields?: array<string, mixed>, email?: string|null, external_id?: string|null, name?: string|null, phone: string, tags?: list<string>} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{attribution?: array<string, mixed>|null, created_at?: string|null, custom_fields?: array<string, mixed>, email?: string|null, external_id?: string|null, id: string, name?: string|null, phone?: string|null, source: string, tags?: list<string>, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function create(array $body, array $options = []): array
+    public function create(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/contacts', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/contacts', $query, $body, $options, 'json');
     }
 
     /**
@@ -64,13 +65,14 @@ final class Contacts
      * Ответ 204 без тела. Ошибки: 404 contact_not_found (уже удалён или чужой).
      *
      * @param string $contactId id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return null
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function delete(string $contactId, array $options = []): ?array
+    public function delete(string $contactId, array $params = []): ?array
     {
-        return $this->http->request('DELETE', '/contacts/' . rawurlencode($contactId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('DELETE', '/contacts/' . rawurlencode($contactId), $query, null, $options, 'json');
     }
 
     /**
@@ -82,13 +84,14 @@ final class Contacts
      * Ошибки: 404 contact_not_found, если контакта нет в этом аккаунте или он удалён.
      *
      * @param string $contactId id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{attribution?: array<string, mixed>|null, created_at?: string|null, custom_fields?: array<string, mixed>, email?: string|null, external_id?: string|null, id: string, name?: string|null, phone?: string|null, source: string, tags?: list<string>, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function get(string $contactId, array $options = []): array
+    public function get(string $contactId, array $params = []): array
     {
-        return $this->http->request('GET', '/contacts/' . rawurlencode($contactId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/contacts/' . rawurlencode($contactId), $query, null, $options, 'json');
     }
 
     /**
@@ -110,26 +113,26 @@ final class Contacts
      * - limit (int): Сколько контактов на странице, от 1 до 200
      * - cursor (string|null): next_cursor из прошлого ответа; без него первая страница
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{search?: string|null, tag?: string|null, updated_since?: string|null, external_id?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(array $params = [], array $options = []): array
+    public function list(array $params = []): array
     {
-        return $this->http->request('GET', '/contacts', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/contacts', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы contacts.list подряд: обходит next_cursor сам.
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{search?: string|null, tag?: string|null, updated_since?: string|null, external_id?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{attribution?: array<string, mixed>|null, created_at?: string|null, custom_fields?: array<string, mixed>, email?: string|null, external_id?: string|null, id: string, name?: string|null, phone?: string|null, source: string, tags?: list<string>, updated_at?: string|null}>
      */
-    public function listAll(array $params = [], array $options = []): \Generator
+    public function listAll(array $params = []): \Generator
     {
-        return $this->http->paginate('/contacts', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/contacts', $query, $options);
     }
 
     /**
@@ -158,12 +161,13 @@ final class Contacts
      *
      * @param string $contactId id контакта: поле id из GET /contacts или из ответа POST /contacts, например 6712f0c4a1b2c3d4e5f60718
      * @param array{custom_fields?: array<string, mixed>|null, email?: string|null, external_id?: string|null, name?: string|null, tags?: list<string>|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{attribution?: array<string, mixed>|null, created_at?: string|null, custom_fields?: array<string, mixed>, email?: string|null, external_id?: string|null, id: string, name?: string|null, phone?: string|null, source: string, tags?: list<string>, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function update(string $contactId, array $body, array $options = []): array
+    public function update(string $contactId, array $body, array $params = []): array
     {
-        return $this->http->request('PATCH', '/contacts/' . rawurlencode($contactId), [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('PATCH', '/contacts/' . rawurlencode($contactId), $query, $body, $options, 'json');
     }
 }

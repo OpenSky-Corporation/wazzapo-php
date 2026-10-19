@@ -25,7 +25,7 @@ require 'vendor/autoload.php';
 $client = new Wazzapo\Wazzapo(['api_key' => getenv('WAZZAPO_API_KEY')]);
 
 // 1. Номер, с которого отправлять
-$number = $client->phoneNumbers->list()['data'][0];
+$number = $client->phoneNumbers->list(['channel' => 'whatsapp'])['data'][0];
 $phoneNumberId = $number['phone_number_id'];
 
 // 2. Текст: работает, если клиент писал вам за последние 24 часа
@@ -77,7 +77,7 @@ try {
 } catch (Exception\UsageLimitException $e) {
     // лимит тарифа: $e->details['limit'], $e->details['upgrade_url']
 } catch (Exception\ValidationException $e) {
-    foreach ($e->details as $field) {
+    foreach ($e->fields() as $field) {
         echo $field['field'], ': ', $field['message'], PHP_EOL;
     }
 } catch (Exception\RateLimitException $e) {
@@ -89,15 +89,21 @@ try {
 
 | Класс | Когда |
 |---|---|
+| `BadRequestException` | 400, неверный запрос |
 | `AuthenticationException` | 401, ключ неверный |
 | `PaymentRequiredException` | 402, тариф не оплачен |
 | `PermissionDeniedException`, `UsageLimitException` | 403, нет права у ключа или исчерпан лимит |
 | `NotFoundException` | 404 |
 | `ConflictException` | 409, объект уже есть |
-| `ValidationException`, `OutsideWindowException`, `TemplateException`, `UnprocessableException` | 422 |
+| `UnprocessableEntityException` и наследники `ValidationException`, `OutsideWindowException`, `TemplateException` | 422 |
 | `RateLimitException` | 429 после всех повторов |
 | `ServerException` | 5xx после всех повторов |
-| `ConnectionException`, `TimeoutException` | нет ответа |
+| `ConnectionException` (`errorCode` CONNECTION_ERROR), `TimeoutException` (TIMEOUT) | нет ответа |
+| `WebhookVerificationException` | вебхук не прошёл проверку, см. «Вебхуки» |
+
+Если ответ пришёл не от API (например, страница прокси с 502), `errorCode` берётся по статусу:
+`BAD_GATEWAY`, `NOT_FOUND` и т.д., пустым он не бывает. `$e->errorCode`, а не `getCode()`: у исключений PHP
+`getCode()` всегда целое число.
 
 Полный список кодов: `Wazzapo\Generated\ErrorCodes::STATUS` и раздел «Коды ошибок» в описании API.
 
@@ -121,10 +127,18 @@ foreach ($client->contacts->listAll(['tag' => 'vip']) as $contact) {
 require 'vendor/autoload.php';
 
 $body = file_get_contents('php://input'); // сырое тело, до json_decode
+$headers = getallheaders();
 try {
-    $event = Wazzapo\Webhooks::verify($body, getallheaders(), getenv('WAZZAPO_WEBHOOK_SECRET'));
-} catch (Wazzapo\Exception\WazzapoException $e) {
+    $event = Wazzapo\Webhooks::verify($body, $headers, getenv('WAZZAPO_WEBHOOK_SECRET'));
+} catch (Wazzapo\Exception\WebhookVerificationException $e) {
     http_response_code(400);
+    exit;
+}
+
+// Wazzapo повторяет доставку, если не получил 200: один и тот же X-Wazzapo-Delivery-Id во всех повторах
+$deliveryId = Wazzapo\Webhooks::deliveryId($headers);
+if ($deliveryId !== null && already_processed($deliveryId)) { // ваша проверка, например по таблице
+    http_response_code(200);
     exit;
 }
 
@@ -135,6 +149,10 @@ http_response_code(200);
 ```
 
 `verify` сверяет подпись `X-Wazzapo-Signature-V2` и время `X-Wazzapo-Timestamp` (допуск 5 минут).
+Если секрет не задан (`getenv` вернул false) или пуст, `verify` сразу бросает `WebhookVerificationException`:
+событие без настоящего секрета не пройдёт. В заголовке подписи может быть несколько значений через запятую
+(после смены секрета), достаточно совпадения одного. Отсеивайте дубли по `Webhooks::deliveryId()`
+(заголовок `X-Wazzapo-Delivery-Id`).
 Отвечайте 200 быстро, тяжёлую работу делайте после ответа. Все события: `Wazzapo\Webhooks::events()`.
 
 ## Файлы
@@ -146,6 +164,8 @@ $client->messages->send(['phone_number_id' => $phoneNumberId, 'to' => '770712345
 
 $bytes = $client->media->download($mediaIdFromWebhook, $phoneNumberId);
 ```
+
+Путь к несуществующему файлу даёт ошибку `FILE_NOT_FOUND` сразу, запрос не уходит.
 
 ## Настройки
 
@@ -160,7 +180,12 @@ new Wazzapo\Wazzapo([
 Свой `Idempotency-Key` (например, id заявки), таймаут или заголовок на один вызов:
 `$client->messages->send($message, ['idempotency_key' => 'order-1024', 'timeout' => 60])`.
 
-`var_dump($client)` не покажет ключ целиком. `$client->isTest()` скажет, тестовый ли ключ.
+`var_dump`, `print_r` и `var_export` не покажут ключ, `serialize($client)` запрещён.
+`$client->isTest()` скажет, тестовый ли ключ. Без ключа конструктор сразу бросает понятную ошибку
+`MISSING_API_KEY`.
+
+Если сервер в списке вернёт тот же `next_cursor` повторно, `listAll()` остановится с ошибкой
+`PAGINATION_LOOP`, а не будет крутиться бесконечно. `Retry-After` понимается и числом секунд, и датой.
 
 ## Разработка
 

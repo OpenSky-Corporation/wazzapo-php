@@ -1,0 +1,7 @@
+# В пакет Packagist (composer install --prefer-dist) уходит только src, README, CHANGELOG и LICENSE
+/tests export-ignore
+/phpunit.xml export-ignore
+/.gitattributes export-ignore
+/.gitignore export-ignore
+/.phpunit.cache export-ignore
+/.phpunit.result.cache export-ignore

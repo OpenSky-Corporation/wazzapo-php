@@ -25,7 +25,6 @@ final class Wazzapo
     public const DEFAULT_BASE_URL = 'https://wazzapo.kz';
 
     public readonly HttpClient $http;
-    private readonly string $apiKey;
 
     /**
      * @param array{api_key?: string, base_url?: string, timeout?: float, max_retries?: int, transport?: Transport, sleep?: callable(float): void} $options
@@ -33,14 +32,19 @@ final class Wazzapo
      */
     public function __construct(array $options = [])
     {
-        $key = $options['api_key'] ?? (getenv('WAZZAPO_API_KEY') ?: '');
-        if ($key === '') {
-            throw new WazzapoException('Нет API-ключа: передайте api_key или задайте WAZZAPO_API_KEY');
+        // getenv() без переменной даёт false: такой ключ считаем отсутствующим, а не падаем на типе
+        $key = $options['api_key'] ?? null;
+        if (!is_string($key) || $key === '') {
+            $env = getenv('WAZZAPO_API_KEY');
+            $key = is_string($env) ? $env : '';
         }
-        $this->apiKey = $key;
+        $key = trim($key);
+        if ($key === '') {
+            throw new WazzapoException('Нет API-ключа: передайте api_key или задайте WAZZAPO_API_KEY', null, 'MISSING_API_KEY');
+        }
         $this->http = new HttpClient(
             $key,
-            $options['base_url'] ?? (getenv('WAZZAPO_BASE_URL') ?: self::DEFAULT_BASE_URL),
+            self::baseUrl($options['base_url'] ?? null),
             (float) ($options['timeout'] ?? 30.0),
             (int) ($options['max_retries'] ?? 2),
             $options['transport'] ?? new CurlTransport(),
@@ -52,7 +56,22 @@ final class Wazzapo
     /** Тестовый ключ wz_test_: запросы ничего не отправляют в WhatsApp и не меняют данные. */
     public function isTest(): bool
     {
-        return str_starts_with($this->apiKey, 'wz_test_');
+        return $this->http->isTest();
+    }
+
+    /** @return array<string, mixed> serialize не сохранит ключ */
+    public function __serialize(): array
+    {
+        throw new \LogicException('Клиент Wazzapo нельзя сериализовать: создайте новый с ключом');
+    }
+
+    private static function baseUrl(mixed $option): string
+    {
+        if (is_string($option) && $option !== '') {
+            return $option;
+        }
+        $env = getenv('WAZZAPO_BASE_URL');
+        return is_string($env) && $env !== '' ? $env : self::DEFAULT_BASE_URL;
     }
 
     /** @return array<string, mixed> var_dump и print_r не покажут ключ целиком */

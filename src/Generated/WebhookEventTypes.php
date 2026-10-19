@@ -29,25 +29,25 @@ final class WebhookEventTypes
      * - limit (int): Сколько записей на странице
      * - cursor (string|null): next_cursor из прошлого ответа; без него первая страница
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(array $params = [], array $options = []): array
+    public function list(array $params = []): array
     {
-        return $this->http->request('GET', '/webhook-event-types', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/webhook-event-types', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы webhook_event_types.list подряд: обходит next_cursor сам.
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{description: string, example?: array<string, mixed>|null, name: string}>
      */
-    public function listAll(array $params = [], array $options = []): \Generator
+    public function listAll(array $params = []): \Generator
     {
-        return $this->http->paginate('/webhook-event-types', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/webhook-event-types', $query, $options);
     }
 }

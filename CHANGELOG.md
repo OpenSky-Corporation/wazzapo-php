@@ -8,3 +8,9 @@
   сотрудники, вебхуки.
 - Повторы при 429, 5xx и сбое сети с учётом Retry-After, Idempotency-Key на каждый POST.
 - Исключения по статусу и коду ошибки, `listAll()` для списков, проверка подписи вебхука v2.
+- `WebhookVerificationException`: секрет обязателен (пустой или false из `getenv` даёт ошибку), несколько
+  подписей через запятую, `Webhooks::deliveryId()` для отсева повторов.
+- `BadRequestException` (400), `UnprocessableEntityException` (422) и `ValidationException::fields()`.
+- Код ошибки не бывает пустым: CONNECTION_ERROR, TIMEOUT, MISSING_API_KEY, FILE_NOT_FOUND, PAGINATION_LOOP
+  и код по статусу для ответа не в формате API.
+- `Retry-After` датой HTTP, остановка при повторе курсора, ключ скрыт в `var_export` и `serialize`.

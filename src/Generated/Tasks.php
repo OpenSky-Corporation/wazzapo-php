@@ -41,13 +41,14 @@ final class Tasks
      *
      * @param string $dealId id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
      * @param array{description?: string, due_at: string, responsible_user_id?: string|null, task_type?: string, title: string} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{completed_at?: string|null, created_at?: string|null, deal_id?: string|null, description?: string, done?: bool, due_at?: string|null, id: string, responsible_user_id?: string|null, status: 'open'|'done'|'cancelled', task_type?: string, title: string, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function create(string $dealId, array $body, array $options = []): array
+    public function create(string $dealId, array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/deals/' . rawurlencode($dealId) . '/tasks', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/deals/' . rawurlencode($dealId) . '/tasks', $query, $body, $options, 'json');
     }
 
     /**
@@ -63,27 +64,27 @@ final class Tasks
      * - cursor (string|null): next_cursor из прошлого ответа; для первой страницы не передавайте
      *
      * @param string $dealId id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(string $dealId, array $params = [], array $options = []): array
+    public function list(string $dealId, array $params = []): array
     {
-        return $this->http->request('GET', '/deals/' . rawurlencode($dealId) . '/tasks', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/deals/' . rawurlencode($dealId) . '/tasks', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы tasks.list подряд: обходит next_cursor сам.
      *
      * @param string $dealId id сделки: поле id из GET /deals или из ответа POST /deals, например 6713b1d5f2c3d4e5f6071829
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{completed_at?: string|null, created_at?: string|null, deal_id?: string|null, description?: string, done?: bool, due_at?: string|null, id: string, responsible_user_id?: string|null, status: 'open'|'done'|'cancelled', task_type?: string, title: string, updated_at?: string|null}>
      */
-    public function listAll(string $dealId, array $params = [], array $options = []): \Generator
+    public function listAll(string $dealId, array $params = []): \Generator
     {
-        return $this->http->paginate('/deals/' . rawurlencode($dealId) . '/tasks', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/deals/' . rawurlencode($dealId) . '/tasks', $query, $options);
     }
 
     /**
@@ -106,12 +107,13 @@ final class Tasks
      *
      * @param string $taskId id задачи: поле id из GET /deals/{deal_id}/tasks или из ответа POST /deals/{deal_id}/tasks
      * @param array{done?: bool|null, due_at?: string|null, responsible_user_id?: string|null, title?: string|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{completed_at?: string|null, created_at?: string|null, deal_id?: string|null, description?: string, done?: bool, due_at?: string|null, id: string, responsible_user_id?: string|null, status: 'open'|'done'|'cancelled', task_type?: string, title: string, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function update(string $taskId, array $body, array $options = []): array
+    public function update(string $taskId, array $body, array $params = []): array
     {
-        return $this->http->request('PATCH', '/tasks/' . rawurlencode($taskId), [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('PATCH', '/tasks/' . rawurlencode($taskId), $query, $body, $options, 'json');
     }
 }

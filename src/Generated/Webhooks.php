@@ -127,13 +127,14 @@ final class Webhooks
      *   https://crm.example.kz/hooks/wazzapo
      *
      * @param array{description?: string|null, event_types: list<'message.incoming'|'message.outgoing'|'message.status'|'conversation.assigned'|'conversation.status_changed'|'conversation.note_added'|'session.connected'|'session.disconnected'|'deal.stage_changed'|'deal.closed'|'deal.created'|'deal.changed'|'contact.created'|'contact.updated'|'template.status_updated'|'template.quality_changed'|'template.category_changed'|'invoice.status_changed'|'task.created'>, url: string} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{consecutive_failures?: int, created_at?: string|null, description?: string|null, event_types: list<string>, id: string, is_active: bool, last_failure_at?: string|null, last_success_at?: string|null, secret: string, url: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function create(array $body, array $options = []): array
+    public function create(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/webhooks', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/webhooks', $query, $body, $options, 'json');
     }
 
     /**
@@ -145,13 +146,14 @@ final class Webhooks
      * Ошибки: 404 webhook_not_found.
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return null
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function delete(string $webhookId, array $options = []): ?array
+    public function delete(string $webhookId, array $params = []): ?array
     {
-        return $this->http->request('DELETE', '/webhooks/' . rawurlencode($webhookId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('DELETE', '/webhooks/' . rawurlencode($webhookId), $query, null, $options, 'json');
     }
 
     /**
@@ -162,13 +164,14 @@ final class Webhooks
      * Ошибки: 404 webhook_not_found.
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{consecutive_failures?: int, created_at?: string|null, description?: string|null, event_types: list<string>, id: string, is_active: bool, last_failure_at?: string|null, last_success_at?: string|null, url: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function get(string $webhookId, array $options = []): array
+    public function get(string $webhookId, array $params = []): array
     {
-        return $this->http->request('GET', '/webhooks/' . rawurlencode($webhookId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/webhooks/' . rawurlencode($webhookId), $query, null, $options, 'json');
     }
 
     /**
@@ -183,26 +186,26 @@ final class Webhooks
      * - limit (int): Сколько записей на странице
      * - cursor (string|null): next_cursor из прошлого ответа; без него первая страница
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(array $params = [], array $options = []): array
+    public function list(array $params = []): array
     {
-        return $this->http->request('GET', '/webhooks', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/webhooks', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы webhooks.list подряд: обходит next_cursor сам.
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{consecutive_failures?: int, created_at?: string|null, description?: string|null, event_types: list<string>, id: string, is_active: bool, last_failure_at?: string|null, last_success_at?: string|null, url: string}>
      */
-    public function listAll(array $params = [], array $options = []): \Generator
+    public function listAll(array $params = []): \Generator
     {
-        return $this->http->paginate('/webhooks', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/webhooks', $query, $options);
     }
 
     /**
@@ -219,27 +222,27 @@ final class Webhooks
      * - cursor (string|null): next_cursor из прошлого ответа; без него первая страница
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function listDeliveries(string $webhookId, array $params = [], array $options = []): array
+    public function listDeliveries(string $webhookId, array $params = []): array
     {
-        return $this->http->request('GET', '/webhooks/' . rawurlencode($webhookId) . '/deliveries', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/webhooks/' . rawurlencode($webhookId) . '/deliveries', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы webhooks.list_deliveries подряд: обходит next_cursor сам.
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{attempt: int, created_at?: string|null, error_message?: string|null, event_type: string, id: string, next_retry_at?: string|null, response_status?: int|null, sent_at?: string|null, status: string}>
      */
-    public function listDeliveriesAll(string $webhookId, array $params = [], array $options = []): \Generator
+    public function listDeliveriesAll(string $webhookId, array $params = []): \Generator
     {
-        return $this->http->paginate('/webhooks/' . rawurlencode($webhookId) . '/deliveries', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/webhooks/' . rawurlencode($webhookId) . '/deliveries', $query, $options);
     }
 
     /**
@@ -253,13 +256,14 @@ final class Webhooks
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
      * @param string $deliveryId id доставки: поле id из GET /webhooks/{webhook_id}/deliveries или заголовок X-Wazzapo-Delivery-Id запроса, пришедшего на ваш адрес
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{delivered: bool, delivery_id: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function retryDelivery(string $webhookId, string $deliveryId, array $options = []): array
+    public function retryDelivery(string $webhookId, string $deliveryId, array $params = []): array
     {
-        return $this->http->request('POST', '/webhooks/' . rawurlencode($webhookId) . '/deliveries/' . rawurlencode($deliveryId) . '/retry', [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/webhooks/' . rawurlencode($webhookId) . '/deliveries/' . rawurlencode($deliveryId) . '/retry', $query, null, $options, 'json');
     }
 
     /**
@@ -271,13 +275,14 @@ final class Webhooks
      * его на своём сервере, иначе проверка подписи у вас перестанет проходить. Ошибки: 404 webhook_not_found.
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{id: string, secret: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function rotateSecret(string $webhookId, array $options = []): array
+    public function rotateSecret(string $webhookId, array $params = []): array
     {
-        return $this->http->request('POST', '/webhooks/' . rawurlencode($webhookId) . '/rotate-secret', [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/webhooks/' . rawurlencode($webhookId) . '/rotate-secret', $query, null, $options, 'json');
     }
 
     /**
@@ -289,13 +294,14 @@ final class Webhooks
      * Результат в ответе: delivered, код и время ответа, ошибка. Ошибки: 404 webhook_not_found.
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{delivered: bool, error?: string|null, response_status?: int|null, response_time_ms?: int|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function test(string $webhookId, array $options = []): array
+    public function test(string $webhookId, array $params = []): array
     {
-        return $this->http->request('POST', '/webhooks/' . rawurlencode($webhookId) . '/test', [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/webhooks/' . rawurlencode($webhookId) . '/test', $query, null, $options, 'json');
     }
 
     /**
@@ -329,12 +335,13 @@ final class Webhooks
      *
      * @param string $webhookId id вебхука: поле id из ответа POST /webhooks или из GET /webhooks, например 6712f0c4a1b2c3d4e5f60719
      * @param array{description?: string|null, event_types?: list<'message.incoming'|'message.outgoing'|'message.status'|'conversation.assigned'|'conversation.status_changed'|'conversation.note_added'|'session.connected'|'session.disconnected'|'deal.stage_changed'|'deal.closed'|'deal.created'|'deal.changed'|'contact.created'|'contact.updated'|'template.status_updated'|'template.quality_changed'|'template.category_changed'|'invoice.status_changed'|'task.created'>|null, is_active?: bool|null, url?: string|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{consecutive_failures?: int, created_at?: string|null, description?: string|null, event_types: list<string>, id: string, is_active: bool, last_failure_at?: string|null, last_success_at?: string|null, url: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function update(string $webhookId, array $body, array $options = []): array
+    public function update(string $webhookId, array $body, array $params = []): array
     {
-        return $this->http->request('PATCH', '/webhooks/' . rawurlencode($webhookId), [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('PATCH', '/webhooks/' . rawurlencode($webhookId), $query, $body, $options, 'json');
     }
 }

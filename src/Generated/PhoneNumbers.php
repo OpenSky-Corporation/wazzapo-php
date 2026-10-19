@@ -32,13 +32,14 @@ final class PhoneNumbers
      * - phone_e164 (string|null): Номер, который подключаете, в международном формате, например +77071234567
      *
      * @param array{display_name: string, phone_e164?: string|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
-     * @return array{code_verification_status?: 'VERIFIED'|'NOT_VERIFIED'|'EXPIRED'|null, display_phone_number?: string|null, embedded_signup_url?: string|null, phone_number_id: string, provider_type: string, quality_rating?: 'GREEN'|'YELLOW'|'RED'|'UNKNOWN'|null, status: 'pending'|'connecting'|'connected'|'disconnected'|'failed', verified_name?: string|null}
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
+     * @return array{channel?: string, code_verification_status?: 'VERIFIED'|'NOT_VERIFIED'|'EXPIRED'|null, display_phone_number?: string|null, embedded_signup_url?: string|null, phone_number_id: string, provider_type: string, quality_rating?: 'GREEN'|'YELLOW'|'RED'|'UNKNOWN'|null, status: 'pending'|'connecting'|'connected'|'disconnected'|'failed', verified_name?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function create(array $body, array $options = []): array
+    public function create(array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/phone-numbers', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/phone-numbers', $query, $body, $options, 'json');
     }
 
     /**
@@ -50,13 +51,14 @@ final class PhoneNumbers
      * Ошибка: 404 NOT_FOUND, если номера нет в этом аккаунте.
      *
      * @param string $phoneNumberId id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return null
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function delete(string $phoneNumberId, array $options = []): ?array
+    public function delete(string $phoneNumberId, array $params = []): ?array
     {
-        return $this->http->request('DELETE', '/phone-numbers/' . rawurlencode($phoneNumberId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('DELETE', '/phone-numbers/' . rawurlencode($phoneNumberId), $query, null, $options, 'json');
     }
 
     /**
@@ -68,13 +70,14 @@ final class PhoneNumbers
      * нет в этом аккаунте.
      *
      * @param string $phoneNumberId id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
-     * @return array{code_verification_status?: 'VERIFIED'|'NOT_VERIFIED'|'EXPIRED'|null, display_phone_number?: string|null, phone_number_id: string, provider_type: string, quality_rating?: 'GREEN'|'YELLOW'|'RED'|'UNKNOWN'|null, status: 'pending'|'connecting'|'connected'|'disconnected'|'failed', verified_name?: string|null}
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
+     * @return array{channel?: string, code_verification_status?: 'VERIFIED'|'NOT_VERIFIED'|'EXPIRED'|null, display_phone_number?: string|null, phone_number_id: string, provider_type: string, quality_rating?: 'GREEN'|'YELLOW'|'RED'|'UNKNOWN'|null, status: 'pending'|'connecting'|'connected'|'disconnected'|'failed', verified_name?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function get(string $phoneNumberId, array $options = []): array
+    public function get(string $phoneNumberId, array $params = []): array
     {
-        return $this->http->request('GET', '/phone-numbers/' . rawurlencode($phoneNumberId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/phone-numbers/' . rawurlencode($phoneNumberId), $query, null, $options, 'json');
     }
 
     /**
@@ -86,31 +89,38 @@ final class PhoneNumbers
      * Ошибки: 404 NOT_FOUND, 501 not_supported.
      *
      * @param string $phoneNumberId id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{about?: string|null, address?: string|null, description?: string|null, email?: string|null, profile_picture_url?: string|null, vertical?: string|null, websites?: list<string>|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function getBusinessProfile(string $phoneNumberId, array $options = []): array
+    public function getBusinessProfile(string $phoneNumberId, array $params = []): array
     {
-        return $this->http->request('GET', '/phone-numbers/' . rawurlencode($phoneNumberId) . '/business-profile', [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/phone-numbers/' . rawurlencode($phoneNumberId) . '/business-profile', $query, null, $options, 'json');
     }
 
     /**
      * Список номеров
      *
-     * Возвращает номера WhatsApp, подключённые к аккаунту ключа.
+     * Возвращает номера WhatsApp и другие каналы, подключённые к аккаунту ключа.
      *
      * С этого метода начинают: phone_number_id из ответа нужен для отправки сообщений,
-     * загрузки файлов и шаблонов. Номер подключают в кабинете Wazzapo
+     * загрузки файлов и шаблонов. Номера WhatsApp идут первыми, за ними остальные каналы
+     * (поле channel); только WhatsApp: ?channel=whatsapp. Номер подключают в кабинете Wazzapo
      * или методом POST /phone-numbers. Отключённые номера в списке не показываются.
      *
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * Параметры запроса:
+     * - channel ('whatsapp'|'telegram'|'instagram'|'olx'|'satu'|'email'|'webchat'|null): Только этот канал:
+     *   whatsapp, telegram, instagram, olx, satu, email, webchat. Для отправки сообщений и шаблонов нужен whatsapp
+     *
+     * @param array{channel?: 'whatsapp'|'telegram'|'instagram'|'olx'|'satu'|'email'|'webchat'|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, meta?: array<string, mixed>}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(array $options = []): array
+    public function list(array $params = []): array
     {
-        return $this->http->request('GET', '/phone-numbers', [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/phone-numbers', $query, null, $options, 'json');
     }
 
     /**
@@ -133,12 +143,13 @@ final class PhoneNumbers
      *
      * @param string $phoneNumberId id номера: поле phone_number_id из GET /api/v2/external/phone-numbers, например 123456789012345
      * @param array{about?: string|null, address?: string|null, description?: string|null, email?: string|null, vertical?: string|null, websites?: list<string>|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{success?: bool}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function updateBusinessProfile(string $phoneNumberId, array $body, array $options = []): array
+    public function updateBusinessProfile(string $phoneNumberId, array $body, array $params = []): array
     {
-        return $this->http->request('PATCH', '/phone-numbers/' . rawurlencode($phoneNumberId) . '/business-profile', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('PATCH', '/phone-numbers/' . rawurlencode($phoneNumberId) . '/business-profile', $query, $body, $options, 'json');
     }
 }

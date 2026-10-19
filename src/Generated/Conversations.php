@@ -36,13 +36,14 @@ final class Conversations
      *
      * @param string $conversationId id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
      * @param array{mention_user_ids?: list<string>, text: string} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{channel: string, contact: array<string, mixed>, conversation_id?: string|null, direction: 'in'|'out', id: string, interactive?: array<string, mixed>|null, is_deleted?: bool, is_note?: bool, media_url?: string|null, sender: array<string, mixed>, session_id: string, status?: string|null, template?: array<string, mixed>|null, text?: string, timestamp?: string|null, type: string}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function addNote(string $conversationId, array $body, array $options = []): array
+    public function addNote(string $conversationId, array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/notes', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/notes', $query, $body, $options, 'json');
     }
 
     /**
@@ -69,13 +70,14 @@ final class Conversations
      *
      * @param string $conversationId id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
      * @param array{user_id: string|null} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{assignee?: array<string, mixed>|null, channel: string, contact: array<string, mixed>, created_at?: string|null, display_id: int, id: string, is_group?: bool, last_message: array<string, mixed>, phone_number_id?: string|null, session_id: string, snoozed_until?: string|null, status: 'open'|'pending'|'snoozed'|'resolved', tags?: list<string>, unread_count?: int, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function assign(string $conversationId, array $body, array $options = []): array
+    public function assign(string $conversationId, array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/assign', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/assign', $query, $body, $options, 'json');
     }
 
     /**
@@ -88,13 +90,14 @@ final class Conversations
      * ключа: `conversations:read`.
      *
      * @param string $conversationId id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{assignee?: array<string, mixed>|null, channel: string, contact: array<string, mixed>, created_at?: string|null, display_id: int, id: string, is_group?: bool, last_message: array<string, mixed>, phone_number_id?: string|null, session_id: string, snoozed_until?: string|null, status: 'open'|'pending'|'snoozed'|'resolved', tags?: list<string>, unread_count?: int, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function get(string $conversationId, array $options = []): array
+    public function get(string $conversationId, array $params = []): array
     {
-        return $this->http->request('GET', '/conversations/' . rawurlencode($conversationId), [], null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/conversations/' . rawurlencode($conversationId), $query, null, $options, 'json');
     }
 
     /**
@@ -131,26 +134,26 @@ final class Conversations
      * - limit (int): Диалогов на странице, от 1 до 200
      * - cursor (string|null): next_cursor из прошлого ответа; без него первая страница
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{phone_number_id?: string|null, channel?: 'whatsapp'|'telegram'|'instagram'|'olx'|'satu'|'email'|'webchat'|null, status?: 'open'|'pending'|'snoozed'|'resolved'|null, assignee_user_id?: string|null, unread?: bool|null, updated_since?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function list(array $params = [], array $options = []): array
+    public function list(array $params = []): array
     {
-        return $this->http->request('GET', '/conversations', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/conversations', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы conversations.list подряд: обходит next_cursor сам.
      *
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{phone_number_id?: string|null, channel?: 'whatsapp'|'telegram'|'instagram'|'olx'|'satu'|'email'|'webchat'|null, status?: 'open'|'pending'|'snoozed'|'resolved'|null, assignee_user_id?: string|null, unread?: bool|null, updated_since?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{assignee?: array<string, mixed>|null, channel: string, contact: array<string, mixed>, created_at?: string|null, display_id: int, id: string, is_group?: bool, last_message: array<string, mixed>, phone_number_id?: string|null, session_id: string, snoozed_until?: string|null, status: 'open'|'pending'|'snoozed'|'resolved', tags?: list<string>, unread_count?: int, updated_at?: string|null}>
      */
-    public function listAll(array $params = [], array $options = []): \Generator
+    public function listAll(array $params = []): \Generator
     {
-        return $this->http->paginate('/conversations', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/conversations', $query, $options);
     }
 
     /**
@@ -173,27 +176,27 @@ final class Conversations
      * - cursor (string|null): next_cursor из прошлого ответа; без него первая страница
      *
      * @param string $conversationId id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{include_notes?: bool, since?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return array{data: list<array<string, mixed>>, has_more?: bool, next_cursor?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function listMessages(string $conversationId, array $params = [], array $options = []): array
+    public function listMessages(string $conversationId, array $params = []): array
     {
-        return $this->http->request('GET', '/conversations/' . rawurlencode($conversationId) . '/messages', $params, null, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('GET', '/conversations/' . rawurlencode($conversationId) . '/messages', $query, null, $options, 'json');
     }
 
     /**
      * Все страницы conversations.list_messages подряд: обходит next_cursor сам.
      *
      * @param string $conversationId id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
-     * @param array<string, mixed> $params необязательные параметры запроса, список выше
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{include_notes?: bool, since?: string|null, limit?: int, cursor?: string|null, timeout?: float, headers?: array<string, string>} $params необязательные параметры запроса (описание выше) и настройки вызова
      * @return \Generator<int, array{channel: string, contact: array<string, mixed>, conversation_id?: string|null, direction: 'in'|'out', id: string, interactive?: array<string, mixed>|null, is_deleted?: bool, is_note?: bool, media_url?: string|null, sender: array<string, mixed>, session_id: string, status?: string|null, template?: array<string, mixed>|null, text?: string, timestamp?: string|null, type: string}>
      */
-    public function listMessagesAll(string $conversationId, array $params = [], array $options = []): \Generator
+    public function listMessagesAll(string $conversationId, array $params = []): \Generator
     {
-        return $this->http->paginate('/conversations/' . rawurlencode($conversationId) . '/messages', $params, $options);
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->paginate('/conversations/' . rawurlencode($conversationId) . '/messages', $query, $options);
     }
 
     /**
@@ -213,13 +216,14 @@ final class Conversations
      *
      * @param string $conversationId id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
      * @param array{labels: list<string>} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{assignee?: array<string, mixed>|null, channel: string, contact: array<string, mixed>, created_at?: string|null, display_id: int, id: string, is_group?: bool, last_message: array<string, mixed>, phone_number_id?: string|null, session_id: string, snoozed_until?: string|null, status: 'open'|'pending'|'snoozed'|'resolved', tags?: list<string>, unread_count?: int, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function setLabels(string $conversationId, array $body, array $options = []): array
+    public function setLabels(string $conversationId, array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/labels', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/labels', $query, $body, $options, 'json');
     }
 
     /**
@@ -245,12 +249,13 @@ final class Conversations
      *
      * @param string $conversationId id диалога: поле id из GET /api/v2/external/conversations или conversation_id из вебхука message.incoming, например 6a7d5d3712f8e1a5c19f40c4
      * @param array{snoozed_until?: string|null, status: 'open'|'pending'|'snoozed'|'resolved'} $body
-     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $options
+     * @param array{idempotency_key?: string, timeout?: float, headers?: array<string, string>} $params настройки вызова
      * @return array{assignee?: array<string, mixed>|null, channel: string, contact: array<string, mixed>, created_at?: string|null, display_id: int, id: string, is_group?: bool, last_message: array<string, mixed>, phone_number_id?: string|null, session_id: string, snoozed_until?: string|null, status: 'open'|'pending'|'snoozed'|'resolved', tags?: list<string>, unread_count?: int, updated_at?: string|null}
      * @throws \Wazzapo\Exception\WazzapoException
      */
-    public function setStatus(string $conversationId, array $body, array $options = []): array
+    public function setStatus(string $conversationId, array $body, array $params = []): array
     {
-        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/status', [], $body, $options, 'json');
+        [$query, $options] = HttpClient::splitOptions($params);
+        return $this->http->request('POST', '/conversations/' . rawurlencode($conversationId) . '/status', $query, $body, $options, 'json');
     }
 }
