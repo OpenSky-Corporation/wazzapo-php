@@ -167,6 +167,16 @@ $bytes = $client->media->download($mediaIdFromWebhook, $phoneNumberId);
 
 Путь к несуществующему файлу даёт ошибку `FILE_NOT_FOUND` сразу, запрос не уходит.
 
+## Примеры
+
+Готовые примеры без фреймворков в папке [examples](https://github.com/OpenSky-Corporation/wazzapo-php/tree/main/examples):
+
+- [bot-buttons.php](https://github.com/OpenSky-Corporation/wazzapo-php/tree/main/examples/bot-buttons.php): бот с кнопками отвечает на входящее сообщение и на нажатие кнопки;
+- [lead-to-deal.php](https://github.com/OpenSky-Corporation/wazzapo-php/tree/main/examples/lead-to-deal.php): заявка с формы сайта становится сделкой без дублей, клиент получает приветственный шаблон;
+- [webhooks-receiver.php](https://github.com/OpenSky-Corporation/wazzapo-php/tree/main/examples/webhooks-receiver.php): приёмник всех событий с проверкой подписи.
+
+Там же описано, как проверить их на тестовом ключе и подписанным тестовым событием.
+
 ## Настройки
 
 ```php
