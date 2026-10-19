@@ -1,0 +1,29 @@
+{
+    "name": "wazzapo/wazzapo-php",
+    "description": "PHP SDK для API Wazzapo v2: WhatsApp Business API, переписки, контакты, сделки, вебхуки",
+    "type": "library",
+    "license": "MIT",
+    "keywords": ["wazzapo", "whatsapp", "whatsapp-business-api", "crm", "sdk"],
+    "homepage": "https://wazzapo.kz/docs",
+    "support": {
+        "email": "info@wazzapo.kz",
+        "docs": "https://wazzapo.kz/api/v2/external/docs"
+    },
+    "require": {
+        "php": ">=8.1",
+        "ext-curl": "*",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {"Wazzapo\\": "src/"}
+    },
+    "autoload-dev": {
+        "psr-4": {"Wazzapo\\Tests\\": "tests/"}
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
