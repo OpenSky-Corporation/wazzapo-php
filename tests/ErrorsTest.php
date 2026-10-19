@@ -32,7 +32,7 @@ final class ErrorsTest extends TestCase
     /** Примеры ответов с ошибкой из описания API: по одному на статус. */
     public static function examples(): iterable
     {
-        $spec = json_decode((string) file_get_contents(__DIR__ . '/../../openapi.json'), true);
+        $spec = json_decode((string) file_get_contents(__DIR__ . '/openapi.json'), true);
         $seen = [];
         foreach ($spec['paths'] as $path => $item) {
             foreach ($item as $op) {
