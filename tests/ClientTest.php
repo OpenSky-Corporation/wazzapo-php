@@ -38,7 +38,7 @@ final class ClientTest extends TestCase
         self::assertSame('POST', $r->method);
         self::assertSame('https://wazzapo.kz/api/v2/external/messages/send', $r->url);
         self::assertSame('wz_live_1234567890abcdef', $r->headers['X-API-Key']);
-        self::assertStringStartsWith('wazzapo-sdk-php/0.1.0', $r->headers['User-Agent']);
+        self::assertStringStartsWith('wazzapo-sdk-php/0.1.1', $r->headers['User-Agent']);
         self::assertMatchesRegularExpression('/^[0-9a-f-]{36}$/', $r->headers['Idempotency-Key']);
         self::assertSame(self::SEND, json_decode($r->body, true));
     }

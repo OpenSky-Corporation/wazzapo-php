@@ -17,7 +17,7 @@ use Wazzapo\Transport\Transport;
  */
 final class HttpClient
 {
-    public const VERSION = '0.1.0';
+    public const VERSION = '0.1.1';
     private const PREFIX = '/api/v2/external';
     private const RETRY_STATUSES = [429, 500, 502, 503, 504];
     private const MAX_RETRY_AFTER = 60;
